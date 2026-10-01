@@ -140,6 +140,7 @@ main{padding:22px 0 60px}
 .row .ra .star{position:static}
 .empty{background:#fff;border:1px dashed var(--grey);border-radius:var(--r);padding:48px 24px;text-align:center;color:var(--ink2);margin-top:20px}
 .empty h3{color:var(--blue);margin:0 0 6px}
+.sugg{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
 /* drawer */
 .scrim{position:fixed;inset:0;background:rgba(10,20,60,.42);opacity:0;pointer-events:none;transition:opacity .2s;z-index:60}
 .scrim.on{opacity:1;pointer-events:auto}
@@ -229,7 +230,7 @@ footer img{height:44px}footer small{color:var(--ink2);font-size:13px;max-width:5
 <div class="bar-sticky" id="sticky"><div class="wrap">
  <div class="tb">
   <span class="flabel">What</span>
-  <label class="search"><span class="sr">Search</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="Search by topic, subject, grade or audience"></label>
+  <label class="search"><span class="sr">Search</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="Try: Grade 4 maths, reading, principals, autism, online"></label>
   <div class="seg" role="group" aria-label="View"><button data-v="planner" aria-pressed="true">Year planner</button><button data-v="explore" aria-pressed="false">Explore</button></div>
   <button class="plan-btn" id="planBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>My Development Plan <b id="planN">0</b></button>
  </div>
@@ -272,7 +273,43 @@ const starSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 function runOk(r){if(S.term&&r.term!==S.term)return false;
   if(S.month>=0){const a=d(r.start);if(!a||a.getMonth()!==S.month)return false;}
   if(S.mode&&r.mode!==S.mode)return false;return true;}
-function textOk(o){if(!S.q)return true;const q=S.q.toLowerCase();return [o.name,o.desc,o.aud,o.unit,o.sub].join(' ').toLowerCase().includes(q);}
+/* ---- search: every word must match somewhere (name, description, audience, phase, grades, mode, dates),
+   with everyday words and abbreviations understood, so no tagging is needed ---- */
+const norm=s=>String(s||'').toLowerCase().replace(/&/g,' and ').replace(/[’'`]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+const GRADES={'Foundation Phase':'grade r grade 1 grade 2 grade 3 gr r gr1 gr2 gr3 fp early','Intermediate Phase':'grade 4 grade 5 grade 6 gr4 gr5 gr6 ip',
+ 'Senior Phase':'grade 7 grade 8 grade 9 gr7 gr8 gr9 sp','Intermediate and Senior Phase':'grade 4 grade 5 grade 6 grade 7 grade 8 grade 9 isp ip sp',
+ 'Further Education and Training':'grade 10 grade 11 grade 12 gr10 gr11 gr12 fet high school matric','Inclusive Education':'ie inclusion special needs barriers learning support',
+ 'Professional Development':'pd','School Leadership and Management':'slmc leaders leadership management school management team smt'};
+const SYN={maths:['math','mathematic','numeracy','number'],math:['math','numeracy','number'],numeracy:['math','numeracy','number'],
+ reading:['read','literacy','phonic'],phonics:['phon','reading'],phonic:['phon','reading'],literacy:['literacy','read','writ','phonic','language'],writing:['writ'],
+ english:['english'],afrikaans:['afrikaans','grondslagfase','wetenskap van lees'],xhosa:['xhosa','isixhosa','ukufunda'],isixhosa:['xhosa'],
+ languages:['language','reading','writing'],language:['language','reading','writing'],
+ principal:['principal'],principals:['principal'],hod:['departmental head'],hods:['departmental head'],dh:['departmental head'],dhs:['departmental head'],
+ deputy:['deputy'],smt:['principal','deputy','departmental head','leadership'],sgb:['governing bod'],
+ leadership:['leader','leadership'],leader:['leader'],leaders:['leader'],management:['manag'],
+ behaviour:['behaviour'],behavior:['behaviour'],discipline:['discipline','behaviour'],
+ autism:['autism','asd'],asd:['autism','asd'],adhd:['adhd','attention'],trauma:['trauma'],
+ sbst:['school based support','school-based support'],ie:['inclusive'],special:['special','differentiated','profound'],
+ coding:['coding','robotic'],robotics:['robotic','coding'],tech:['technolog'],technology:['technolog'],digital:['digital','online','technolog'],
+ data:['data'],finance:['financ'],financial:['financ'],hr:['recruitment','grievance','leave','discipline','performance'],
+ wellbeing:['wellbeing','wellness','well-being'],wellness:['wellness','wellbeing'],sace:['sace'],cptd:['cptd','sace'],ethics:['ethic'],
+ online:['online'],virtual:['online'],webinar:['online','webinar'],blended:['blended'],facetoface:['face to face'],contact:['face to face'],
+ new:['new','induction','newly'],induction:['induction','newly'],mentor:['mentor'],mentoring:['mentor'],
+ grader:['grade r'],gr:['grade'],foundation:['foundation'],intermediate:['intermediate'],senior:['senior'],fet:['further education','fet'],
+ lo:['life orientation'],pe:['physical education'],ems:['economic'],ns:['natural science'],
+ term1:['term 1'],term2:['term 2'],term3:['term 3'],term4:['term 4']};
+const STOP=new Set(['the','and','for','of','in','a','an','to','with','my','i','me','on','at','about','course','courses','training','workshop','workshops','programme','programmes','program']);
+DATA.forEach(o=>{o._hay=' '+norm([o.name,o.desc,o.aud,o.unit,o.sub,GRADES[o.unit]||'',
+  ...o.runs.map(r=>{const a=d(r.start);return [r.mode,r.dur,'term '+r.term,a?MONL[a.getMonth()]+' '+MON[a.getMonth()]:''].join(' ');})].join(' '))+' ';});
+function queryTerms(q){let s=norm(q).replace(/\bgrade\s+r\b/g,'grader').replace(/\bterm\s+([1-4])\b/g,'term$1').replace(/\bface\s+to\s+face\b/g,'facetoface').replace(/\bgr\s*(\d+)\b/g,'grade $1');
+  const out=[];const words=s.split(' ').filter(w=>w&&!STOP.has(w));
+  for(let i=0;i<words.length;i++){const w=words[i];
+    if(w==='grade'&&words[i+1]){out.push(['grade '+words[i+1]]);i++;continue;}
+    if(w==='grader'){out.push(['grade r']);continue;}
+    const alts=new Set([w]);if(w.length>4&&w.endsWith('s'))alts.add(w.slice(0,-1));(SYN[w]||[]).forEach(x=>alts.add(norm(x)));out.push([...alts]);}
+  return out;}
+function textOk(o){if(!S.q)return true;const terms=S._terms||(S._terms=queryTerms(S.q));
+  return terms.every(alts=>alts.some(a=>/^\d+$/.test(a)?new RegExp('\\b'+a+'\\b').test(o._hay):o._hay.includes(a.length<=3?' '+a:a)));}
 function matches(){return DATA.map(o=>({o,runs:o.runs.filter(runOk)})).filter(x=>x.runs.length&&textOk(x.o)&&(!S.unit||x.o.unit===S.unit)&&(!S.sub||x.o.sub===S.sub));}
 
 /* ---- hero numbers and year ribbon ---- */
@@ -322,7 +359,7 @@ function render(scroll){filters();ribbon();
   document.getElementById('count').textContent=`${n} opportunit${n!==1?'ies':'y'} · ${r} date${r!==1?'s':''}`;
   const active=S.q||S.term||S.month>=0||S.unit||S.sub||S.mode;document.getElementById('clear').hidden=!active;
   const el=document.getElementById('results');
-  el.innerHTML=n?(S.view==='explore'?explore(list):planner(list)):`<div class="empty"><h3>Nothing matches yet</h3>Try a different word, or clear a filter to widen the search.</div>`;
+  el.innerHTML=n?(S.view==='explore'?explore(list):planner(list)):`<div class="empty"><h3>Nothing matches yet</h3>Try a shorter search or a different word, or clear a filter to widen the search.<div class="sugg">${['Mathematics','Reading','Leadership','Inclusive','Grade R','Online'].map(s=>`<button class="chip" data-sugg="${s}">${s}</button>`).join('')}</div></div>`;
   document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.view));
   if(scroll){const top=document.querySelector('main').getBoundingClientRect().top+scrollY-document.getElementById('sticky').offsetHeight-6;if(scrollY>top)scrollTo({top,behavior:'smooth'});}}
 
@@ -379,7 +416,8 @@ function printPlan(items){const area=document.getElementById('printArea');const 
   const done=()=>{document.body.classList.remove('printing-plan');removeEventListener('afterprint',done);};
   addEventListener('afterprint',done);setTimeout(()=>window.print(),120);}
 /* ---- events ---- */
-document.addEventListener('click',e=>{const st=e.target.closest('[data-star]');if(st){e.stopPropagation();const s=st.dataset.star;const i=PLAN.indexOf(s);
+document.addEventListener('click',e=>{const sg=e.target.closest('[data-sugg]');if(sg){const qi=document.getElementById('q');qi.value=sg.dataset.sugg;S.q=qi.value;S._terms=null;Object.assign(S,{term:0,month:-1,unit:'',sub:'',mode:''});render(false);return;}
+  const st=e.target.closest('[data-star]');if(st){e.stopPropagation();const s=st.dataset.star;const i=PLAN.indexOf(s);
     if(i>=0){PLAN.splice(i,1);toast('Removed from your development plan');}else{PLAN.push(s);toast('Added to your development plan');}savePlan();
     const inDrawer=drawer.contains(st);render(false);if(inDrawer){drawer.querySelector('#dTitle').textContent==='My Development Plan'?openPlan():openOpp(s);}return;}
   const op=e.target.closest('[data-open]');if(op){openOpp(op.dataset.open);}});
@@ -387,8 +425,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drawer.classList.co
   if((e.key==='Enter'||e.key===' ')&&e.target.matches('.row')){e.preventDefault();openOpp(e.target.dataset.open);}});
 scrim.onclick=closeDrawer;document.getElementById('planBtn').onclick=openPlan;
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{S.view=b.dataset.v;render(true);});
-let qt;document.getElementById('q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{S.q=e.target.value.trim();render(false);},160);});
-document.getElementById('clear').onclick=()=>{Object.assign(S,{q:'',term:0,month:-1,unit:'',sub:'',mode:''});document.getElementById('q').value='';render(true);};
+let qt;document.getElementById('q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{S.q=e.target.value.trim();S._terms=null;render(false);},160);});
+document.getElementById('clear').onclick=()=>{Object.assign(S,{q:'',_terms:null,term:0,month:-1,unit:'',sub:'',mode:''});document.getElementById('q').value='';render(true);};
 function setStick(){document.documentElement.style.setProperty('--stick',document.getElementById('sticky').offsetHeight+'px');}
 addEventListener('resize',setStick);
 kpis();savePlan();render(false);setStick();
