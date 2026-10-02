@@ -193,6 +193,11 @@ footer img{height:44px}footer small{color:var(--ink2);font-size:13px;max-width:5
  .tb .title{display:none}.hero .wrap{padding-top:36px}.months{height:74px;gap:3px}.mbtn .ml{font-size:10px}.mbtn .bar{font-size:9.5px}
  .row{grid-template-columns:64px 1fr;gap:12px}.row .ra{grid-column:1/-1;justify-content:flex-end}.thead h2{font-size:20px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+/* month filter: easy to undo */
+.rt-r{display:flex;align-items:center;gap:10px}
+.allm{border:1px solid color-mix(in srgb,var(--teal) 60%,#fff);background:var(--soft);color:var(--blue);font-weight:700;font-size:13px;padding:5px 12px;border-radius:999px}
+.allm:hover{background:color-mix(in srgb,var(--teal) 30%,#fff)}
+.mchip .x2{font-size:16px;line-height:1;margin-left:2px}
 /* sharing */
 .hero-acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:20px}
 .hero-acts .pdf-btn{margin-top:0}
@@ -259,7 +264,7 @@ footer img{height:44px}footer small{color:var(--ink2);font-size:13px;max-width:5
   <div class="kpis" id="kpis"></div>
   <div class="hero-acts"><a class="pdf-btn" href="CTLI-Prospectus-2026.pdf" download><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>Download the PDF prospectus</a><button class="share-hero" data-share-site><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>Share the prospectus</button></div>
   </div>
-  <div class="ribbon"><div class="rt"><span>The year at a glance</span><span id="rhint">Tap a month to see what runs</span></div>
+  <div class="ribbon"><div class="rt"><span>The year at a glance</span><span class="rt-r"><span id="rhint">Tap a month to see what runs</span><button class="allm" id="allMonths" hidden>Show the whole year</button></span></div>
    <div class="months" id="months"></div>
    <div class="tkey"><span><i style="background:var(--t1)"></i>Term 1</span><span><i style="background:var(--t2)"></i>Term 2</span><span><i style="background:var(--t3)"></i>Term 3</span><span><i style="background:var(--t4)"></i>Term 4</span></div>
   </div>
@@ -383,15 +388,17 @@ function ribbon(){const c=Array(12).fill(0),tm=Array(12).fill(0);
   const mx=Math.max(...c);const el=document.getElementById('months');el.classList.toggle('dim',S.month>=0);
   el.innerHTML=c.map((n,i)=>`<button class="mbtn" data-m="${i}" data-t="${tm[i]||0}" aria-pressed="${S.month===i}" aria-label="${MONL[i]}: ${n} dates" style="--c:${tm[i]?TCOL[tm[i]]:'var(--line)'}"><span class="bar" style="height:${n?Math.max(20,n/mx*100):4}%">${n||''}</span><span class="ml">${MON[i]}</span></button>`).join('');
   el.querySelectorAll('.mbtn').forEach(b=>b.onclick=()=>{const m=+b.dataset.m;S.month=S.month===m?-1:m;if(S.month>=0)S.term=0;render(true);});
-  document.getElementById('rhint').textContent=S.month>=0?`Showing ${MONL[S.month]} · tap again to clear`:'Tap a month to see what runs';}
+  document.getElementById('rhint').textContent=S.month>=0?`Showing ${MONL[S.month]} only`:'Tap a month to see what runs';
+  const am=document.getElementById('allMonths');am.hidden=S.month<0;am.onclick=()=>{S.month=-1;render(true);};}
 
 /* ---- filter chips ---- */
 function filters(){const modes=['Face-to-face','Online','Blended'];
-  document.getElementById('filters').innerHTML=`<span class="flabel">When</span><select class="chip" id="fTerm" aria-label="Term"><option value="0">All terms</option>${[1,2,3,4].map(t=>`<option value="${t}"${S.term===t?' selected':''}>Term ${t}</option>`).join('')}</select><span class="fsep"></span>
+  document.getElementById('filters').innerHTML=`<span class="flabel">When</span><select class="chip" id="fTerm" aria-label="Term"><option value="0">All terms</option>${[1,2,3,4].map(t=>`<option value="${t}"${S.term===t?' selected':''}>Term ${t}</option>`).join('')}</select>${S.month>=0?`<button class="chip mchip" id="fMonth" aria-pressed="true" aria-label="Showing ${MONL[S.month]} only. Remove to show the whole year" title="Show the whole year">${MONL[S.month]}<span aria-hidden="true" class="x2">×</span></button>`:''}<span class="fsep"></span>
    <span class="flabel">Who</span><select class="chip" id="fSub" aria-label="Sub-directorate"><option value="">All sub-directorates</option>${Object.keys(SUBCOL).map(u=>`<option${u===S.sub?' selected':''}>${esc(u)}</option>`).join('')}</select>
    <select class="chip" id="fUnit" aria-label="Phase or unit"><option value="">All phases</option>${UNITS.map(u=>`<option${u===S.unit?' selected':''}>${esc(u)}</option>`).join('')}</select><span class="fsep"></span>
    <span class="flabel">How</span>${modes.map(m=>`<button class="chip" data-mode="${m}" aria-pressed="${S.mode===m}">${m}</button>`).join('')}`;
   document.getElementById('fTerm').onchange=e=>{S.term=+e.target.value;S.month=-1;render(true);};
+  const fm=document.getElementById('fMonth');if(fm)fm.onclick=()=>{S.month=-1;render(false);};
   document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{S.mode=S.mode===b.dataset.mode?'':b.dataset.mode;render(true);});
   document.getElementById('fUnit').onchange=e=>{S.unit=e.target.value;render(true);};
   document.getElementById('fSub').onchange=e=>{S.sub=e.target.value;render(true);};}
