@@ -275,7 +275,7 @@ footer img{height:44px}footer small{color:var(--ink2);font-size:13px;max-width:5
  <div class="tb">
   <span class="flabel">What</span>
   <label class="search"><span class="sr">Search</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="Try: Grade 4 maths, reading, principals, autism, online"></label>
-  <div class="seg" role="group" aria-label="View"><button data-v="planner" aria-pressed="true">Year planner</button><button data-v="explore" aria-pressed="false">Explore</button></div>
+  <div class="seg" role="group" aria-label="View"><button data-v="explore" aria-pressed="true">Explore</button><button data-v="planner" aria-pressed="false">Year planner</button></div>
   <button class="plan-btn" id="planBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>My Development Plan <b id="planN">0</b></button>
  </div>
  <div class="filters" id="filters"></div>
@@ -302,7 +302,7 @@ const MONL=['January','February','March','April','May','June','July','August','S
 const UNITS=[...new Set(DATA.map(o=>o.unit))];
 const UNIT_ORDER=['Foundation Phase','Intermediate Phase','Senior Phase','Intermediate and Senior Phase','Inclusive Education','Further Education and Training','Professional Development','School Leadership and Management'];
 UNITS.sort((a,b)=>UNIT_ORDER.indexOf(a)-UNIT_ORDER.indexOf(b));
-const S={q:'',term:0,month:-1,unit:'',sub:'',mode:'',view:'planner'};
+const S={q:'',term:0,month:-1,unit:'',sub:'',mode:'',view:'explore'};
 let PLAN=[];try{PLAN=JSON.parse(localStorage.getItem('ctliPlan2026')||'[]');}catch(e){PLAN=[];}
 /* each plan entry holds one opportunity and the one date chosen for it: {s:slug,i:run index,d:start date}.
    Older plans saved the opportunity only; those still load, and the person is asked to choose a date where there is more than one. */
