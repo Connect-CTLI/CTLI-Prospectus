@@ -193,6 +193,25 @@ footer img{height:44px}footer small{color:var(--ink2);font-size:13px;max-width:5
  .tb .title{display:none}.hero .wrap{padding-top:36px}.months{height:74px;gap:3px}.mbtn .ml{font-size:10px}.mbtn .bar{font-size:9.5px}
  .row{grid-template-columns:64px 1fr;gap:12px}.row .ra{grid-column:1/-1;justify-content:flex-end}.thead h2{font-size:20px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+/* sharing */
+.hero-acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:20px}
+.hero-acts .pdf-btn{margin-top:0}
+.share-hero{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.6);font-weight:700;padding:10px 18px;border-radius:999px;font-size:15px;backdrop-filter:blur(4px)}
+.share-hero:hover{background:rgba(255,255,255,.26)}
+.cfoot .shr{flex:none;width:48px;display:grid;place-items:center;border-right:1px solid var(--line);color:var(--steel)}
+.cfoot .shr:hover{color:var(--blue)}
+.share-pop{position:fixed;z-index:90;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px rgba(0,20,137,.18);padding:6px;width:240px;display:none}
+.share-pop.on{display:block}
+.share-pop p{margin:4px 8px 6px;font-size:12.5px;color:var(--ink2);font-weight:600}
+.share-pop a,.share-pop button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:9px 10px;border-radius:9px;font:inherit;font-size:14px;font-weight:600;color:var(--blue);text-decoration:none;text-align:left}
+.share-pop a:hover,.share-pop button:hover,.share-pop a:focus-visible,.share-pop button:focus-visible{background:var(--soft2)}
+.share-pop i{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;font-style:normal}
+/* send the plan to myself */
+.send{margin-top:18px;padding:14px;border-radius:12px;background:color-mix(in srgb,var(--teal) 14%,#fff)}
+.send h4{margin:0 0 4px!important;color:var(--blue)}
+.send p{font-size:13.5px!important;color:var(--ink2)!important;margin:0 0 10px!important}
+.send .pbtns{margin-top:0}
+.shared-note{background:color-mix(in srgb,var(--teal) 14%,#fff);border-radius:12px;padding:10px 12px;font-size:14px;color:var(--ink);margin:0 0 6px}
 /* choosing one date */
 .pick-note{background:color-mix(in srgb,var(--gold) 14%,#fff);border-left:4px solid var(--gold);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--ink);margin:0 0 10px}
 .pick-note.flash{animation:flash 1.2s ease 1}
@@ -238,7 +257,7 @@ footer img{height:44px}footer small{color:var(--ink2);font-size:13px;max-width:5
   <div class="sub">Professional Learning Opportunities</div>
   <p>Programmes for teachers, school leaders and support staff across the Western Cape. Search, filter by term or phase, and build your own learning plan for the year.</p>
   <div class="kpis" id="kpis"></div>
-  <a class="pdf-btn" href="CTLI-Prospectus-2026.pdf" download><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>Download the PDF prospectus</a>
+  <div class="hero-acts"><a class="pdf-btn" href="CTLI-Prospectus-2026.pdf" download><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>Download the PDF prospectus</a><button class="share-hero" data-share-site><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>Share the prospectus</button></div>
   </div>
   <div class="ribbon"><div class="rt"><span>The year at a glance</span><span id="rhint">Tap a month to see what runs</span></div>
    <div class="months" id="months"></div>
@@ -264,6 +283,7 @@ footer img{height:44px}footer small{color:var(--ink2);font-size:13px;max-width:5
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle"></aside>
 <div class="toast" id="toast" role="status"></div>
+<div class="share-pop" id="sharePop" role="dialog" aria-label="Share"></div>
 <div id="printArea" aria-hidden="true"></div>
 
 <script>
@@ -289,11 +309,25 @@ function range(r){const a=d(r.start),b=d(r.end);if(!a)return 'Date to be confirm
   if(a.getMonth()===b.getMonth())return `${a.getDate()} to ${b.getDate()} ${MON[a.getMonth()]}`;
   return `${a.getDate()} ${MON[a.getMonth()]} to ${b.getDate()} ${MON[b.getMonth()]}`;}
 const oppOf=slug=>DATA.find(o=>o.slug===slug);
-const planEntry=slug=>PLAN.find(x=>x.s===slug);
-function planRun(slug){const p=planEntry(slug),o=oppOf(slug);if(!p||!o)return -1;if(o.runs.length===1)return 0;
+const planEntry=(slug,list=PLAN)=>list.find(x=>x.s===slug);
+function planRun(slug,list=PLAN){const p=planEntry(slug,list),o=oppOf(slug);if(!p||!o)return -1;if(o.runs.length===1)return 0;
   if(p.i!=null&&o.runs[p.i]&&o.runs[p.i].start===p.d)return p.i;return o.runs.findIndex(r=>r.start===p.d);}
 function setPlan(slug,i){const o=oppOf(slug);const e={s:slug,i,d:o.runs[i]?o.runs[i].start:null};const k=PLAN.findIndex(x=>x.s===slug);if(k>=0)PLAN[k]=e;else PLAN.push(e);savePlan();}
 function dropPlan(slug){PLAN=PLAN.filter(x=>x.s!==slug);savePlan();}
+/* a plan link carries the plan itself, so it can be opened on another device without a login:
+   #plan=slug,slug~run~MMDD  (run and date only where an opportunity has more than one date) */
+function planCode(list=PLAN){return list.map(p=>{const o=oppOf(p.s);if(!o)return '';const i=planRun(p.s,list);
+  return o.runs.length>1&&i>=0?`${p.s}~${i}~${(o.runs[i].start||'').slice(5).replace('-','')}`:p.s;}).filter(Boolean).join(',');}
+function readPlanCode(code){return String(code||'').split(',').map(x=>{const [sl,i,md]=x.split('~');const o=oppOf(sl);if(!o)return null;
+  if(i===undefined||o.runs.length===1)return {s:sl,i:0,d:o.runs[0].start||null};
+  const d=md&&md.length===4?`2026-${md.slice(0,2)}-${md.slice(2)}`:null;return {s:sl,i:+i,d};}).filter(Boolean);}
+const planUrl=(list=PLAN)=>baseUrl()+'#plan='+planCode(list);
+function planSummary(list=PLAN,sep='\n'){return list.map(p=>{const o=oppOf(p.s);if(!o)return '';const i=planRun(p.s,list);
+  return `- ${o.name}: ${i>=0?`${range(o.runs[i])} (Term ${o.runs[i].term||'TBC'}, ${o.runs[i].mode})`:'date still to be chosen'}`;}).filter(Boolean).join(sep);}
+function sendBtns(list=PLAN){const intro='My CTLI development plan for 2026:';
+  const wa=encodeURIComponent(`${intro}\n${planSummary(list)}\n\nOpen the full plan: ${planUrl(list)}`);
+  const mail=`mailto:?subject=${encodeURIComponent('My CTLI development plan 2026')}&body=${encodeURIComponent(`${intro}\n\n${planSummary(list)}\n\nOpen the full plan on any device (it loads straight into the CTLI prospectus):\n${planUrl(list)}\n\nDates may change. Please confirm with CTLI before you travel.`)}`;
+  return `<a class="btn" href="https://wa.me/?text=${wa}" target="_blank" rel="noopener">WhatsApp</a><a class="btn" href="${mail}">Email</a><button class="btn" data-copy-plan>Copy link</button>`;}
 function savePlan(){try{localStorage.setItem('ctliPlan2026',JSON.stringify(PLAN));}catch(e){}document.getElementById('planN').textContent=PLAN.length;}
 function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('on'),2200);}
 const starSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>';
@@ -371,7 +405,7 @@ function card(o,runs){const inPlan=!!planEntry(o.slug);const multi=o.runs.length
    <div class="in"><div class="lft"><h3><button data-open="${o.slug}">${esc(o.name)}</button></h3>
     <div class="tags">${modes.map(m=>`<span class="tag m">${esc(m)}</span>`).join('')}${dur?`<span class="tag">${esc(dur)}</span>`:''}</div></div>
     <div class="dates">${show.map(dateTile).join('')}${runs.length>3?`<span class="more">+${runs.length-3} more</span>`:''}</div></div>
-   <div class="cfoot"><button data-open="${o.slug}">Details</button><a href="${REG_URL}" target="_blank" rel="noopener">Register</a></div></article>`;}
+   <div class="cfoot"><button class="shr" data-share="${o.slug}" aria-label="Share ${esc(o.name)}" title="Share"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></button><button data-open="${o.slug}">Details</button><a href="${REG_URL}" target="_blank" rel="noopener">Register</a></div></article>`;}
 function explore(list){const by={};list.forEach(x=>x.runs.forEach(r=>{const t=r.term||0;(by[t]=by[t]||new Map());if(!by[t].has(x.o.slug))by[t].set(x.o.slug,{o:x.o,runs:[]});by[t].get(x.o.slug).runs.push(r);}));
   return Object.keys(by).sort().map(t=>{const items=[...by[t].values()].sort((a,b)=>(a.runs[0].start||'').localeCompare(b.runs[0].start||''));
     const starts=items.flatMap(i=>i.runs.map(r=>d(r.start))).filter(Boolean);const span=starts.length?`${MONL[Math.min(...starts.map(x=>x.getMonth()))]} to ${MONL[Math.max(...starts.map(x=>x.getMonth()))]}`:'';
@@ -413,41 +447,84 @@ function downloadIcs(name,events){const body=['BEGIN:VCALENDAR','VERSION:2.0','P
 /* ---- drawer ---- */
 const drawer=document.getElementById('drawer'),scrim=document.getElementById('scrim');let lastFocus=null;
 function openDrawer(html){const fresh=!drawer.classList.contains('on');if(fresh)lastFocus=document.activeElement;drawer.innerHTML=html;drawer.classList.add('on');scrim.classList.add('on');document.body.style.overflow='hidden';if(fresh)setTimeout(()=>drawer.querySelector('.x').focus(),50);}
-function closeDrawer(){drawer.classList.remove('on');scrim.classList.remove('on');document.body.style.overflow='';if(location.hash)history.replaceState(null,'',location.pathname+location.search);if(lastFocus)lastFocus.focus();}
+function closeDrawer(){closePop(false);drawer.classList.remove('on');scrim.classList.remove('on');document.body.style.overflow='';if(location.hash)history.replaceState(null,'',location.pathname+location.search);if(lastFocus)lastFocus.focus();}
 function openOpp(slug,pick){const o=DATA.find(x=>x.slug===slug);if(!o)return;history.replaceState(null,'','#'+slug);const inPlan=!!planEntry(o.slug);const multi=o.runs.length>1;const pr=planRun(o.slug);
   openDrawer(`<div class="dh" style="--sc:${SUBCOL[o.sub]}"><div class="unit"><i></i>${esc(o.unit)} · ${esc(o.sub)}</div><h2 id="dTitle">${esc(o.name)}</h2><button class="x" aria-label="Close">×</button></div>
    <div class="db"><p>${esc(o.desc)}</p><div class="box"><b>Who should attend</b>${esc(o.aud)}</div>
     <h4 id="dDates">Dates in 2026</h4>${multi?`<p class="pick-note" id="pickNote">${inPlan&&pr>=0?`Your plan has <b>${esc(range(o.runs[pr]))}</b>. To change it, choose another date below.`:`This runs on ${o.runs.length} dates. Choose the one that suits you and it goes into your development plan.`}</p>`:''}${o.runs.map((r,i)=>{const a=d(r.start);const ch=multi&&pr===i;return `<div class="run${ch?' chosen':''}"><div class="cal"><div class="cm t${r.term}" style="--tc:${TCOL[r.term]}">${a?MON[a.getMonth()]:'TBC'}</div><div class="cd">${a?a.getDate():'?'}</div><div class="cr">Term ${r.term||'TBC'}</div></div>
       <div class="ri"><b>${esc(range(r))}</b><span>${esc(r.mode)}${r.dur?' · '+esc(r.dur):''}</span></div>
       <div class="acts">${multi?`<button class="btn pick" data-star="${o.slug}" data-run="${i}" aria-pressed="${ch}">${ch?'Chosen for my plan':'Choose this date'}</button>`:''}<a class="btn p" href="${REG_URL}" target="_blank" rel="noopener">Register here</a>${calBtns(o,r)}</div></div>`;}).join('')}
-    <div class="dacts">${multi?(inPlan?`<button class="btn" data-unstar="${o.slug}">Remove from my development plan</button>`:''):`<button class="btn ${inPlan?'g':''}" data-star="${o.slug}" data-run="0" aria-pressed="${inPlan}">${inPlan?'In my development plan':'Add to my development plan'}</button>`}<button class="btn" data-share>Copy link</button></div></div>`);
+    <div class="dacts">${multi?(inPlan?`<button class="btn" data-unstar="${o.slug}">Remove from my development plan</button>`:''):`<button class="btn ${inPlan?'g':''}" data-star="${o.slug}" data-run="0" aria-pressed="${inPlan}">${inPlan?'In my development plan':'Add to my development plan'}</button>`}<button class="btn" data-share="${o.slug}"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>Share</button></div></div>`);
   if(pick){const n=drawer.querySelector('#pickNote');if(n){setTimeout(()=>{n.scrollIntoView({block:'center',behavior:'smooth'});n.classList.add('flash');const b=drawer.querySelector('.btn.pick');if(b)b.focus({preventScroll:true});},120);}}
   drawer.querySelector('.x').onclick=closeDrawer;
-  drawer.querySelector('[data-share]').onclick=()=>{const url=location.href.split('#')[0]+'#'+o.slug;(navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>toast('Link copied'),()=>prompt('Copy this link',url));};}
+}
 function openPlan(){const items=PLAN.map(p=>oppOf(p.s)).filter(Boolean);
   openDrawer(`<div class="dh" style="--sc:#FFC600"><div class="unit"><i></i>Saved on this device</div><h2 id="dTitle">My Development Plan</h2><button class="x" aria-label="Close">×</button></div>
    <div class="db">${items.length?`<p style="font-size:14.5px;color:var(--ink2)">Your shortlist for 2026. Add each date straight into your Google or Microsoft (Outlook) calendar, or save the plan as a PDF to discuss with your principal or Departmental Head.</p>
     ${items.map(o=>`<div class="plan-item"><div><h3 data-open="${o.slug}">${esc(o.name)}</h3><span>${esc(o.unit)}${o.sub!==o.unit?' · '+esc(o.sub):''}</span>
       <div class="pcal">${(()=>{const i=planRun(o.slug);if(i<0)return `<div class="pdate todo"><span>This runs on ${o.runs.length} dates. Choose the one you will attend.</span><div class="pbtns"><button class="btn p" data-pick="${o.slug}">Choose a date</button></div></div>`;
         const r=o.runs[i];return `<div class="pdate"><span><b>${esc(range(r))}</b> · Term ${r.term||'TBC'} · ${esc(r.mode)}</span>${o.runs.length>1?`<button class="chg" data-pick="${o.slug}">Change date</button>`:''}<div class="pbtns">${calBtns(o,r)}</div></div>`;})()}</div></div><button class="star" data-star="${o.slug}" aria-pressed="true" aria-label="Remove from my development plan" style="position:static">${starSvg}</button></div>`).join('')}
+    <div class="send"><h4>Send it to myself</h4><p>Your plan is saved on this device only. Send it to yourself to open it on your phone or another computer, or to show your principal or Departmental Head.</p><div class="pbtns">${sendBtns()}</div></div>
     <div class="dacts"><button class="btn p" id="planPrint">Download or print my development plan</button></div>`
     :`<div class="empty" style="margin:0"><h3>Your development plan is empty</h3>Tap the star on any opportunity to save it here. If it runs more than once, you choose the date that suits you.</div>`}</div>`);
   drawer.querySelector('.x').onclick=closeDrawer;
-  const pr=drawer.querySelector('#planPrint');if(pr)pr.onclick=()=>printPlan(items);}
-function printPlan(items){const area=document.getElementById('printArea');const today=new Date().toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'});
+  const pr=drawer.querySelector('#planPrint');if(pr)pr.onclick=()=>printPlan(items);
+  const cp=drawer.querySelector('[data-copy-plan]');if(cp)cp.onclick=()=>copyLink(planUrl());}
+/* a plan opened from a link: show it, and let the person keep it on this device */
+function openShared(list){const items=list.map(p=>oppOf(p.s)).filter(Boolean);if(!items.length)return;
+  const same=planCode(list)===planCode(PLAN);const have=PLAN.length;
+  openDrawer(`<div class="dh" style="--sc:#7FA9AE"><div class="unit"><i></i>Opened from a link</div><h2 id="dTitle">Development plan</h2><button class="x" aria-label="Close">×</button></div>
+   <div class="db"><p class="shared-note">${same?'This plan is already saved on this device.':`This plan has ${items.length} opportunit${items.length!==1?'ies':'y'}. Save it to keep it on this device${have?`, or add it to the ${have} already saved here`:''}.`}</p>
+    ${items.map(o=>{const i=planRun(o.slug,list);const r=i>=0?o.runs[i]:null;return `<div class="plan-item" style="grid-template-columns:1fr"><div><h3 data-open="${o.slug}">${esc(o.name)}</h3><span>${esc(o.unit)}${o.sub!==o.unit?' · '+esc(o.sub):''}</span>
+      <div class="pcal">${r?`<div class="pdate"><span><b>${esc(range(r))}</b> · Term ${r.term||'TBC'} · ${esc(r.mode)}</span><div class="pbtns">${calBtns(o,r)}</div></div>`:`<div class="pdate todo"><span>Date still to be chosen.</span></div>`}</div></div></div>`;}).join('')}
+    <div class="dacts">${same?`<button class="btn p" data-goplan>Open my development plan</button>`:have?`<button class="btn p" data-keep="replace">Replace my saved plan with this one</button><button class="btn" data-keep="add">Add to my saved plan</button>`:`<button class="btn p" data-keep="replace">Save this plan on this device</button>`}<button class="btn" id="sharedPrint">Download or print</button></div></div>`);
+  drawer.querySelector('.x').onclick=closeDrawer;
+  drawer.querySelector('#sharedPrint').onclick=()=>printPlan(items,list);
+  const g=drawer.querySelector('[data-goplan]');if(g)g.onclick=openPlan;
+  drawer.querySelectorAll('[data-keep]').forEach(b=>b.onclick=()=>{if(b.dataset.keep==='replace')PLAN=[];
+    list.forEach(p=>{const i=planRun(p.s,list);const k=PLAN.findIndex(x=>x.s===p.s);const e={s:p.s,i:i>=0?i:null,d:i>=0?oppOf(p.s).runs[i].start:null};if(k>=0)PLAN[k]=e;else PLAN.push(e);});
+    savePlan();render(false);toast('Plan saved on this device');openPlan();});}
+function printPlan(items,list=PLAN){const area=document.getElementById('printArea');const today=new Date().toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'});
   area.innerHTML=`<div class="pp-head"><img src="${LOGO}" alt="Western Cape Government, Education"><div>Cape Teaching and Leadership Institute</div></div>
    <div class="stripe"><i style="background:#FFC600"></i><i style="background:#8FAD15"></i><i style="background:#A6BBC8"></i><i style="background:#D73828"></i></div>
    <h1>My Development Plan 2026</h1><p class="pp-sub">${items.length} professional learning opportunit${items.length!==1?'ies':'y'} · prepared ${today}</p>
    ${items.map(o=>`<section class="pp-item" style="--sc:${SUBCOL[o.sub]}"><div class="pp-unit">${esc(o.unit)} · ${esc(o.sub)}</div><h2>${esc(o.name)}</h2><p>${esc(o.desc)}</p>
      <div class="pp-aud"><b>Who should attend</b>${esc(o.aud)}</div>
-     <table><thead><tr><th>Term</th><th>Chosen date</th><th>Mode</th><th>Duration</th></tr></thead><tbody>${(()=>{const i=planRun(o.slug);if(i<0)return `<tr><td colspan="4">Date still to be chosen. This runs on ${o.runs.length} dates in 2026.</td></tr>`;const r=o.runs[i];return `<tr><td>Term ${r.term||'TBC'}</td><td>${esc(range(r))}</td><td>${esc(r.mode)}</td><td>${esc(r.dur||'')}</td></tr>`;})()}</tbody></table>
+     <table><thead><tr><th>Term</th><th>Chosen date</th><th>Mode</th><th>Duration</th></tr></thead><tbody>${(()=>{const i=planRun(o.slug,list);if(i<0)return `<tr><td colspan="4">Date still to be chosen. This runs on ${o.runs.length} dates in 2026.</td></tr>`;const r=o.runs[i];return `<tr><td>Term ${r.term||'TBC'}</td><td>${esc(range(r))}</td><td>${esc(r.mode)}</td><td>${esc(r.dur||'')}</td></tr>`;})()}</tbody></table>
      <div class="pp-reg">Register: ${esc(REG_URL)}</div></section>`).join('')}
    <div class="pp-foot">Dates may change. Please confirm with CTLI before you travel. Nominations run through your school, circuit or district office.</div>`;
   closeDrawer();document.body.classList.add('printing-plan');
   const done=()=>{document.body.classList.remove('printing-plan');removeEventListener('afterprint',done);};
   addEventListener('afterprint',done);setTimeout(()=>window.print(),120);}
+/* ---- sharing: the phone's own share sheet where there is one, otherwise WhatsApp, email or copy link ---- */
+const LIVE_URL='https://connect-ctli.github.io/CTLI-Prospectus/';
+const baseUrl=()=>location.protocol.startsWith('http')?location.href.split('#')[0]:LIVE_URL;
+function shareInfo(slug){const o=slug?oppOf(slug):null;
+  if(!o)return {title:'CTLI Prospectus 2026',text:'Have a look at the CTLI Prospectus 2026: professional learning opportunities for teachers, school leaders and support staff in the Western Cape.',url:baseUrl()};
+  const ds=o.runs.filter(r=>r.start).map(range);const when=ds.length?(ds.length>3?ds.slice(0,3).join(', ')+' and more':ds.join(', ')):'dates to be confirmed';
+  return {title:o.name,text:`Have a look at "${o.name}" at the Cape Teaching and Leadership Institute (${when}).`,url:baseUrl()+'#'+o.slug};}
+const pop=document.getElementById('sharePop');let popFrom=null;
+function closePop(back){if(!pop.classList.contains('on'))return;pop.classList.remove('on');if(back&&popFrom)popFrom.focus();popFrom=null;}
+function copyLink(url){(navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>toast('Link copied'),()=>prompt('Copy this link',url));}
+function openShare(btn,slug){const info=shareInfo(slug);
+  if(navigator.share&&matchMedia('(pointer:coarse)').matches){navigator.share(info).catch(()=>{});return;}
+  if(pop.classList.contains('on')&&popFrom===btn){closePop(true);return;}
+  const msg=encodeURIComponent(info.text+' '+info.url);
+  pop.innerHTML=`<p>${slug?'Share this opportunity':'Share the prospectus'}</p>
+   <a href="https://wa.me/?text=${msg}" target="_blank" rel="noopener"><i style="background:color-mix(in srgb,#8FAD15 22%,#fff);color:#001489">${'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/></svg>'}</i>WhatsApp</a>
+   <a href="mailto:?subject=${encodeURIComponent(info.title)}&body=${encodeURIComponent(info.text+'\n\n'+info.url)}"><i style="background:color-mix(in srgb,#007DBA 18%,#fff);color:#001489">${'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>'}</i>Email</a>
+   <button data-copy><i style="background:color-mix(in srgb,#FFC600 25%,#fff);color:#001489">${'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>'}</i>Copy link</button>`;
+  pop.querySelector('[data-copy]').onclick=()=>{copyLink(info.url);closePop(true);};
+  pop.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>closePop(false)));
+  pop.classList.add('on');popFrom=btn;popAt=Date.now();
+  const b=btn.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight;
+  let left=Math.min(Math.max(8,b.left+b.width/2-w/2),innerWidth-w-8),top=b.bottom+8;if(top+h>innerHeight-8)top=Math.max(8,b.top-h-8);
+  pop.style.left=left+'px';pop.style.top=top+'px';setTimeout(()=>pop.querySelector('a').focus(),30);}
+let popAt=0;addEventListener('scroll',e=>{if(Date.now()-popAt>400&&!pop.contains(e.target))closePop(false);},{passive:true,capture:true});addEventListener('resize',()=>closePop(false));
 /* ---- events ---- */
-document.addEventListener('click',e=>{const sg=e.target.closest('[data-sugg]');if(sg){const qi=document.getElementById('q');qi.value=sg.dataset.sugg;S.q=qi.value;S._terms=null;Object.assign(S,{term:0,month:-1,unit:'',sub:'',mode:''});render(false);return;}
+document.addEventListener('click',e=>{if(pop.contains(e.target))return;
+  const sh=e.target.closest('[data-share],[data-share-site]');if(sh){e.stopPropagation();openShare(sh,sh.dataset.share||'');return;}
+  closePop(false);const sg=e.target.closest('[data-sugg]');if(sg){const qi=document.getElementById('q');qi.value=sg.dataset.sugg;S.q=qi.value;S._terms=null;Object.assign(S,{term:0,month:-1,unit:'',sub:'',mode:''});render(false);return;}
   const pk=e.target.closest('[data-pick]');if(pk){e.stopPropagation();openOpp(pk.dataset.pick,true);return;}
   const un=e.target.closest('[data-unstar]');if(un){e.stopPropagation();dropPlan(un.dataset.unstar);toast('Removed from your development plan');render(false);openOpp(un.dataset.unstar);drawer.querySelector('.x').focus();return;}
   const st=e.target.closest('[data-star]');if(st){e.stopPropagation();const s=st.dataset.star;const o=oppOf(s);if(!o)return;
@@ -463,7 +540,7 @@ document.addEventListener('click',e=>{const sg=e.target.closest('[data-sugg]');i
       const f=hasRun?drawer.querySelector(`[data-star="${s}"][data-run="${ri}"]`):null;(f||drawer.querySelector('.x')).focus({preventScroll:true});}
     return;}
   const op=e.target.closest('[data-open]');if(op){openOpp(op.dataset.open);}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drawer.classList.contains('on'))closeDrawer();
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&pop.classList.contains('on')){closePop(true);return;}if(e.key==='Escape'&&drawer.classList.contains('on'))closeDrawer();
   if((e.key==='Enter'||e.key===' ')&&e.target.matches('.row')){e.preventDefault();openOpp(e.target.dataset.open);}});
 scrim.onclick=closeDrawer;document.getElementById('planBtn').onclick=openPlan;
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{S.view=b.dataset.v;render(true);});
@@ -472,7 +549,9 @@ document.getElementById('clear').onclick=()=>{Object.assign(S,{q:'',_terms:null,
 function setStick(){document.documentElement.style.setProperty('--stick',document.getElementById('sticky').offsetHeight+'px');}
 addEventListener('resize',setStick);
 kpis();savePlan();render(false);setStick();
-if(location.hash.length>1)openOpp(decodeURIComponent(location.hash.slice(1)));
+function fromHash(){const h=location.hash;if(h.startsWith('#plan=')){const list=readPlanCode(decodeURIComponent(h.slice(6)));history.replaceState(null,'',location.pathname+location.search);if(list.length)openShared(list);}
+  else if(h.length>1&&oppOf(decodeURIComponent(h.slice(1))))openOpp(decodeURIComponent(h.slice(1)));}
+fromHash();addEventListener('hashchange',fromHash);
 </script>
 </body>
 </html>
