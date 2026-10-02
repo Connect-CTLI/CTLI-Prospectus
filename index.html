@@ -192,7 +192,17 @@ footer img{height:44px}footer small{color:var(--ink2);font-size:13px;max-width:5
  .seg button{padding:7px 11px;font-size:13px}.plan-btn{padding:8px 12px}.wrap{padding:0 16px}.band .wrap{gap:12px}.band img{height:44px}.band .inst{font-size:15px;max-width:170px}
  .tb .title{display:none}.hero .wrap{padding-top:36px}.months{height:74px;gap:3px}.mbtn .ml{font-size:10px}.mbtn .bar{font-size:9.5px}
  .row{grid-template-columns:64px 1fr;gap:12px}.row .ra{grid-column:1/-1;justify-content:flex-end}.thead h2{font-size:20px}}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+/* choosing one date */
+.pick-note{background:color-mix(in srgb,var(--gold) 14%,#fff);border-left:4px solid var(--gold);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--ink);margin:0 0 10px}
+.pick-note.flash{animation:flash 1.2s ease 1}
+@keyframes flash{0%,100%{background:color-mix(in srgb,var(--gold) 14%,#fff)}35%{background:color-mix(in srgb,var(--gold) 45%,#fff)}}
+.run.chosen{background:color-mix(in srgb,var(--gold) 12%,#fff);margin:0 -10px;padding:12px 10px;border-radius:12px;border-top-color:transparent}
+.run.chosen+.run{border-top-color:transparent}
+.btn.pick[aria-pressed=true]{background:var(--gold);border-color:var(--gold);color:var(--blue);font-weight:700}
+.star.other{border-color:var(--gold);color:var(--blue);background:color-mix(in srgb,var(--gold) 16%,#fff)}
+.pdate .chg{font-size:12.5px;font-weight:600;color:var(--blue);background:none;border:0;padding:0;margin-left:8px;text-decoration:underline;text-underline-offset:3px}
+.pdate.todo{background:color-mix(in srgb,var(--gold) 14%,#fff)}
 #printArea{display:none}
 @media print{@page{size:A4;margin:16mm}
  .bar-sticky,.hero,.star,.cfoot,footer,.band{display:none!important}.card{break-inside:avoid;box-shadow:none}
@@ -269,12 +279,21 @@ const UNIT_ORDER=['Foundation Phase','Intermediate Phase','Senior Phase','Interm
 UNITS.sort((a,b)=>UNIT_ORDER.indexOf(a)-UNIT_ORDER.indexOf(b));
 const S={q:'',term:0,month:-1,unit:'',sub:'',mode:'',view:'planner'};
 let PLAN=[];try{PLAN=JSON.parse(localStorage.getItem('ctliPlan2026')||'[]');}catch(e){PLAN=[];}
+/* each plan entry holds one opportunity and the one date chosen for it: {s:slug,i:run index,d:start date}.
+   Older plans saved the opportunity only; those still load, and the person is asked to choose a date where there is more than one. */
+PLAN=(Array.isArray(PLAN)?PLAN:[]).map(x=>typeof x==='string'?{s:x}:x).filter(x=>x&&x.s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const d=s=>s?new Date(s+'T00:00:00'):null;
 function range(r){const a=d(r.start),b=d(r.end);if(!a)return 'Date to be confirmed';
   if(!b||+a===+b)return `${a.getDate()} ${MON[a.getMonth()]}`;
   if(a.getMonth()===b.getMonth())return `${a.getDate()} to ${b.getDate()} ${MON[a.getMonth()]}`;
   return `${a.getDate()} ${MON[a.getMonth()]} to ${b.getDate()} ${MON[b.getMonth()]}`;}
+const oppOf=slug=>DATA.find(o=>o.slug===slug);
+const planEntry=slug=>PLAN.find(x=>x.s===slug);
+function planRun(slug){const p=planEntry(slug),o=oppOf(slug);if(!p||!o)return -1;if(o.runs.length===1)return 0;
+  if(p.i!=null&&o.runs[p.i]&&o.runs[p.i].start===p.d)return p.i;return o.runs.findIndex(r=>r.start===p.d);}
+function setPlan(slug,i){const o=oppOf(slug);const e={s:slug,i,d:o.runs[i]?o.runs[i].start:null};const k=PLAN.findIndex(x=>x.s===slug);if(k>=0)PLAN[k]=e;else PLAN.push(e);savePlan();}
+function dropPlan(slug){PLAN=PLAN.filter(x=>x.s!==slug);savePlan();}
 function savePlan(){try{localStorage.setItem('ctliPlan2026',JSON.stringify(PLAN));}catch(e){}document.getElementById('planN').textContent=PLAN.length;}
 function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('on'),2200);}
 const starSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>';
@@ -345,9 +364,9 @@ function filters(){const modes=['Face-to-face','Online','Blended'];
 
 /* ---- views ---- */
 function dateTile(r){return `<div class="dt" style="--tc:${TCOL[r.term]||'var(--grey)'}"><span class="tb2"></span><span class="tx"><b>${esc(range(r))}</b><span>Term ${r.term||'TBC'} · ${esc(r.mode)}</span></span></div>`;}
-function card(o,runs){const inPlan=PLAN.includes(o.slug);const show=runs.slice(0,3);const modes=[...new Set(o.runs.map(r=>r.mode))];const dur=[...new Set(o.runs.map(r=>r.dur).filter(Boolean))][0];
+function card(o,runs){const inPlan=!!planEntry(o.slug);const multi=o.runs.length>1;const show=runs.slice(0,3);const modes=[...new Set(o.runs.map(r=>r.mode))];const dur=[...new Set(o.runs.map(r=>r.dur).filter(Boolean))][0];
   return `<article class="card" style="--sc:${SUBCOL[o.sub]}"><div class="top"></div>
-   <button class="star" data-star="${o.slug}" aria-pressed="${inPlan}" aria-label="${inPlan?'Remove from':'Add to'} my development plan">${starSvg}</button>
+   <button class="star" data-star="${o.slug}" aria-pressed="${inPlan}" aria-label="${inPlan?'Remove from my development plan':multi?'Choose a date for my development plan':'Add to my development plan'}" title="${inPlan?'In my development plan':multi?'Choose a date for my plan':'Add to my development plan'}">${starSvg}</button>
    <div class="chd"><div class="unit"><i></i>${esc(o.unit)}</div>${o.sub!==o.unit?`<div class="subd">${esc(o.sub)}</div>`:""}</div>
    <div class="in"><div class="lft"><h3><button data-open="${o.slug}">${esc(o.name)}</button></h3>
     <div class="tags">${modes.map(m=>`<span class="tag m">${esc(m)}</span>`).join('')}${dur?`<span class="tag">${esc(dur)}</span>`:''}</div></div>
@@ -360,10 +379,10 @@ function explore(list){const by={};list.forEach(x=>x.runs.forEach(r=>{const t=r.
      <div class="grid">${items.map(i=>card(i.o,i.runs)).join('')}</div></section>`;}).join('');}
 function planner(list){const rows=[];list.forEach(x=>x.runs.forEach(r=>rows.push({o:x.o,r})));rows.sort((a,b)=>(a.r.start||'9').localeCompare(b.r.start||'9')||a.o.name.localeCompare(b.o.name));
   const by={};rows.forEach(x=>{const a=d(x.r.start);const k=a?a.getMonth():12;(by[k]=by[k]||[]).push(x);});
-  return Object.keys(by).sort((a,b)=>a-b).map(m=>`<section class="month"><h2>${m<12?MONL[m]:'To be confirmed'} 2026<span>${by[m].length} date${by[m].length!==1?'s':''}</span></h2><div class="rows">${by[m].map(({o,r})=>{const a=d(r.start),b=d(r.end);const inPlan=PLAN.includes(o.slug);
+  return Object.keys(by).sort((a,b)=>a-b).map(m=>`<section class="month"><h2>${m<12?MONL[m]:'To be confirmed'} 2026<span>${by[m].length} date${by[m].length!==1?'s':''}</span></h2><div class="rows">${by[m].map(({o,r})=>{const a=d(r.start),b=d(r.end);const ri=o.runs.indexOf(r);const pr=planRun(o.slug);const inPlan=pr===ri;const other=!!planEntry(o.slug)&&!inPlan;
     return `<div class="row" data-open="${o.slug}" tabindex="0" role="button" aria-label="${esc(o.name)}, ${esc(range(r))}"><div class="cal"><div class="cm t${r.term}" style="--tc:${TCOL[r.term]}">${a?MON[a.getMonth()]:'TBC'}</div><div class="cd">${a?a.getDate():'?'}</div><div class="cr">${b&&+b!==+a?'to '+b.getDate()+' '+MON[b.getMonth()]:'Term '+(r.term||'TBC')}</div></div>
      <div><h3>${esc(o.name)}</h3><div class="rm"><span><i style="background:${SUBCOL[o.sub]}"></i>${esc(o.unit)}${o.sub!==o.unit?' · '+esc(o.sub):''}</span><span>Term ${r.term||'TBC'}</span><span>${esc(r.mode)}</span>${r.dur?`<span>${esc(r.dur)}</span>`:''}</div></div>
-     <div class="ra"><button class="star" data-star="${o.slug}" aria-pressed="${inPlan}" aria-label="${inPlan?'Remove from':'Add to'} my development plan">${starSvg}</button><a class="btn p" href="${REG_URL}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Register</a></div></div>`;}).join('')}</div></section>`).join('');}
+     <div class="ra"><button class="star${other?' other':''}" data-star="${o.slug}" data-run="${ri}" aria-pressed="${inPlan}" aria-label="${inPlan?'Remove this date from my development plan':other?'Change my plan to this date':'Add this date to my development plan'}" title="${inPlan?'This date is in my plan':other?'In my plan on another date. Tap to switch to this one':'Add this date to my plan'}">${starSvg}</button><a class="btn p" href="${REG_URL}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Register</a></div></div>`;}).join('')}</div></section>`).join('');}
 function render(scroll){filters();ribbon();
   const list=matches();const n=list.length,r=list.reduce((a,x)=>a+x.runs.length,0);
   document.getElementById('count').textContent=`${n} opportunit${n!==1?'ies':'y'} · ${r} date${r!==1?'s':''}`;
@@ -393,24 +412,26 @@ function downloadIcs(name,events){const body=['BEGIN:VCALENDAR','VERSION:2.0','P
 
 /* ---- drawer ---- */
 const drawer=document.getElementById('drawer'),scrim=document.getElementById('scrim');let lastFocus=null;
-function openDrawer(html){lastFocus=document.activeElement;drawer.innerHTML=html;drawer.classList.add('on');scrim.classList.add('on');document.body.style.overflow='hidden';setTimeout(()=>drawer.querySelector('.x').focus(),50);}
+function openDrawer(html){const fresh=!drawer.classList.contains('on');if(fresh)lastFocus=document.activeElement;drawer.innerHTML=html;drawer.classList.add('on');scrim.classList.add('on');document.body.style.overflow='hidden';if(fresh)setTimeout(()=>drawer.querySelector('.x').focus(),50);}
 function closeDrawer(){drawer.classList.remove('on');scrim.classList.remove('on');document.body.style.overflow='';if(location.hash)history.replaceState(null,'',location.pathname+location.search);if(lastFocus)lastFocus.focus();}
-function openOpp(slug){const o=DATA.find(x=>x.slug===slug);if(!o)return;history.replaceState(null,'','#'+slug);const inPlan=PLAN.includes(o.slug);
+function openOpp(slug,pick){const o=DATA.find(x=>x.slug===slug);if(!o)return;history.replaceState(null,'','#'+slug);const inPlan=!!planEntry(o.slug);const multi=o.runs.length>1;const pr=planRun(o.slug);
   openDrawer(`<div class="dh" style="--sc:${SUBCOL[o.sub]}"><div class="unit"><i></i>${esc(o.unit)} · ${esc(o.sub)}</div><h2 id="dTitle">${esc(o.name)}</h2><button class="x" aria-label="Close">×</button></div>
    <div class="db"><p>${esc(o.desc)}</p><div class="box"><b>Who should attend</b>${esc(o.aud)}</div>
-    <h4>Dates in 2026</h4>${o.runs.map((r,i)=>{const a=d(r.start);return `<div class="run"><div class="cal"><div class="cm t${r.term}" style="--tc:${TCOL[r.term]}">${a?MON[a.getMonth()]:'TBC'}</div><div class="cd">${a?a.getDate():'?'}</div><div class="cr">Term ${r.term||'TBC'}</div></div>
+    <h4 id="dDates">Dates in 2026</h4>${multi?`<p class="pick-note" id="pickNote">${inPlan&&pr>=0?`Your plan has <b>${esc(range(o.runs[pr]))}</b>. To change it, choose another date below.`:`This runs on ${o.runs.length} dates. Choose the one that suits you and it goes into your development plan.`}</p>`:''}${o.runs.map((r,i)=>{const a=d(r.start);const ch=multi&&pr===i;return `<div class="run${ch?' chosen':''}"><div class="cal"><div class="cm t${r.term}" style="--tc:${TCOL[r.term]}">${a?MON[a.getMonth()]:'TBC'}</div><div class="cd">${a?a.getDate():'?'}</div><div class="cr">Term ${r.term||'TBC'}</div></div>
       <div class="ri"><b>${esc(range(r))}</b><span>${esc(r.mode)}${r.dur?' · '+esc(r.dur):''}</span></div>
-      <div class="acts"><a class="btn p" href="${REG_URL}" target="_blank" rel="noopener">Register here</a>${calBtns(o,r)}</div></div>`;}).join('')}
-    <div class="dacts"><button class="btn ${inPlan?'g':''}" data-star="${o.slug}" aria-pressed="${inPlan}">${inPlan?'In my development plan':'Add to my development plan'}</button><button class="btn" data-share>Copy link</button></div></div>`);
+      <div class="acts">${multi?`<button class="btn pick" data-star="${o.slug}" data-run="${i}" aria-pressed="${ch}">${ch?'Chosen for my plan':'Choose this date'}</button>`:''}<a class="btn p" href="${REG_URL}" target="_blank" rel="noopener">Register here</a>${calBtns(o,r)}</div></div>`;}).join('')}
+    <div class="dacts">${multi?(inPlan?`<button class="btn" data-unstar="${o.slug}">Remove from my development plan</button>`:''):`<button class="btn ${inPlan?'g':''}" data-star="${o.slug}" data-run="0" aria-pressed="${inPlan}">${inPlan?'In my development plan':'Add to my development plan'}</button>`}<button class="btn" data-share>Copy link</button></div></div>`);
+  if(pick){const n=drawer.querySelector('#pickNote');if(n){setTimeout(()=>{n.scrollIntoView({block:'center',behavior:'smooth'});n.classList.add('flash');const b=drawer.querySelector('.btn.pick');if(b)b.focus({preventScroll:true});},120);}}
   drawer.querySelector('.x').onclick=closeDrawer;
   drawer.querySelector('[data-share]').onclick=()=>{const url=location.href.split('#')[0]+'#'+o.slug;(navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>toast('Link copied'),()=>prompt('Copy this link',url));};}
-function openPlan(){const items=PLAN.map(s=>DATA.find(o=>o.slug===s)).filter(Boolean);
+function openPlan(){const items=PLAN.map(p=>oppOf(p.s)).filter(Boolean);
   openDrawer(`<div class="dh" style="--sc:#FFC600"><div class="unit"><i></i>Saved on this device</div><h2 id="dTitle">My Development Plan</h2><button class="x" aria-label="Close">×</button></div>
    <div class="db">${items.length?`<p style="font-size:14.5px;color:var(--ink2)">Your shortlist for 2026. Add each date straight into your Google or Microsoft (Outlook) calendar, or save the plan as a PDF to discuss with your principal or Departmental Head.</p>
     ${items.map(o=>`<div class="plan-item"><div><h3 data-open="${o.slug}">${esc(o.name)}</h3><span>${esc(o.unit)}${o.sub!==o.unit?' · '+esc(o.sub):''}</span>
-      <div class="pcal">${o.runs.map(r=>`<div class="pdate"><span><b>${esc(range(r))}</b> · Term ${r.term||'TBC'} · ${esc(r.mode)}</span><div class="pbtns">${calBtns(o,r)}</div></div>`).join('')}</div></div><button class="star" data-star="${o.slug}" aria-pressed="true" aria-label="Remove from my development plan" style="position:static">${starSvg}</button></div>`).join('')}
+      <div class="pcal">${(()=>{const i=planRun(o.slug);if(i<0)return `<div class="pdate todo"><span>This runs on ${o.runs.length} dates. Choose the one you will attend.</span><div class="pbtns"><button class="btn p" data-pick="${o.slug}">Choose a date</button></div></div>`;
+        const r=o.runs[i];return `<div class="pdate"><span><b>${esc(range(r))}</b> · Term ${r.term||'TBC'} · ${esc(r.mode)}</span>${o.runs.length>1?`<button class="chg" data-pick="${o.slug}">Change date</button>`:''}<div class="pbtns">${calBtns(o,r)}</div></div>`;})()}</div></div><button class="star" data-star="${o.slug}" aria-pressed="true" aria-label="Remove from my development plan" style="position:static">${starSvg}</button></div>`).join('')}
     <div class="dacts"><button class="btn p" id="planPrint">Download or print my development plan</button></div>`
-    :`<div class="empty" style="margin:0"><h3>Your development plan is empty</h3>Tap the star on any opportunity to save it here.</div>`}</div>`);
+    :`<div class="empty" style="margin:0"><h3>Your development plan is empty</h3>Tap the star on any opportunity to save it here. If it runs more than once, you choose the date that suits you.</div>`}</div>`);
   drawer.querySelector('.x').onclick=closeDrawer;
   const pr=drawer.querySelector('#planPrint');if(pr)pr.onclick=()=>printPlan(items);}
 function printPlan(items){const area=document.getElementById('printArea');const today=new Date().toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'});
@@ -419,7 +440,7 @@ function printPlan(items){const area=document.getElementById('printArea');const 
    <h1>My Development Plan 2026</h1><p class="pp-sub">${items.length} professional learning opportunit${items.length!==1?'ies':'y'} · prepared ${today}</p>
    ${items.map(o=>`<section class="pp-item" style="--sc:${SUBCOL[o.sub]}"><div class="pp-unit">${esc(o.unit)} · ${esc(o.sub)}</div><h2>${esc(o.name)}</h2><p>${esc(o.desc)}</p>
      <div class="pp-aud"><b>Who should attend</b>${esc(o.aud)}</div>
-     <table><thead><tr><th>Term</th><th>Dates</th><th>Mode</th><th>Duration</th></tr></thead><tbody>${o.runs.map(r=>`<tr><td>Term ${r.term||'TBC'}</td><td>${esc(range(r))}</td><td>${esc(r.mode)}</td><td>${esc(r.dur||'')}</td></tr>`).join('')}</tbody></table>
+     <table><thead><tr><th>Term</th><th>Chosen date</th><th>Mode</th><th>Duration</th></tr></thead><tbody>${(()=>{const i=planRun(o.slug);if(i<0)return `<tr><td colspan="4">Date still to be chosen. This runs on ${o.runs.length} dates in 2026.</td></tr>`;const r=o.runs[i];return `<tr><td>Term ${r.term||'TBC'}</td><td>${esc(range(r))}</td><td>${esc(r.mode)}</td><td>${esc(r.dur||'')}</td></tr>`;})()}</tbody></table>
      <div class="pp-reg">Register: ${esc(REG_URL)}</div></section>`).join('')}
    <div class="pp-foot">Dates may change. Please confirm with CTLI before you travel. Nominations run through your school, circuit or district office.</div>`;
   closeDrawer();document.body.classList.add('printing-plan');
@@ -427,9 +448,20 @@ function printPlan(items){const area=document.getElementById('printArea');const 
   addEventListener('afterprint',done);setTimeout(()=>window.print(),120);}
 /* ---- events ---- */
 document.addEventListener('click',e=>{const sg=e.target.closest('[data-sugg]');if(sg){const qi=document.getElementById('q');qi.value=sg.dataset.sugg;S.q=qi.value;S._terms=null;Object.assign(S,{term:0,month:-1,unit:'',sub:'',mode:''});render(false);return;}
-  const st=e.target.closest('[data-star]');if(st){e.stopPropagation();const s=st.dataset.star;const i=PLAN.indexOf(s);
-    if(i>=0){PLAN.splice(i,1);toast('Removed from your development plan');}else{PLAN.push(s);toast('Added to your development plan');}savePlan();
-    const inDrawer=drawer.contains(st);render(false);if(inDrawer){drawer.querySelector('#dTitle').textContent==='My Development Plan'?openPlan():openOpp(s);}return;}
+  const pk=e.target.closest('[data-pick]');if(pk){e.stopPropagation();openOpp(pk.dataset.pick,true);return;}
+  const un=e.target.closest('[data-unstar]');if(un){e.stopPropagation();dropPlan(un.dataset.unstar);toast('Removed from your development plan');render(false);openOpp(un.dataset.unstar);drawer.querySelector('.x').focus();return;}
+  const st=e.target.closest('[data-star]');if(st){e.stopPropagation();const s=st.dataset.star;const o=oppOf(s);if(!o)return;
+    const inP=!!planEntry(s),cur=planRun(s),hasRun=st.dataset.run!==undefined,ri=hasRun?+st.dataset.run:-1;
+    if(hasRun){if(inP&&cur===ri){dropPlan(s);toast('Removed from your development plan');}
+      else{setPlan(s,ri);toast(inP?`Date changed to ${range(o.runs[ri])}`:`Added to your plan: ${range(o.runs[ri])}`);}}
+    else if(inP){dropPlan(s);toast('Removed from your development plan');}
+    else if(o.runs.length===1){setPlan(s,0);toast('Added to your development plan');}
+    else{openOpp(s,true);return;}
+    const inDrawer=drawer.contains(st),isPlan=inDrawer&&drawer.querySelector('#dTitle').textContent==='My Development Plan';
+    const db=drawer.querySelector('.db'),top=db?db.scrollTop:0;render(false);
+    if(inDrawer){isPlan?openPlan():openOpp(s);const nd=drawer.querySelector('.db');if(nd)nd.scrollTop=top;
+      const f=hasRun?drawer.querySelector(`[data-star="${s}"][data-run="${ri}"]`):null;(f||drawer.querySelector('.x')).focus({preventScroll:true});}
+    return;}
   const op=e.target.closest('[data-open]');if(op){openOpp(op.dataset.open);}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drawer.classList.contains('on'))closeDrawer();
   if((e.key==='Enter'||e.key===' ')&&e.target.matches('.row')){e.preventDefault();openOpp(e.target.dataset.open);}});
